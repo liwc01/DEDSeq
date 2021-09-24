@@ -1,0 +1,361 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+```{r date, echo=FALSE}
+Date_now=Sys.Date();
+load("report.R.img")
+source("report.inc.R")
+library(knitr)
+library(pander)
+convert_pdf2png<-function(png_f,desc=""){
+  return_image_str=paste0(" ",png_f," file not found!\n")
+  pdf_f=sub("png$","pdf",png_f)
+  if(file.exists(png_f)){
+    return_image_str= paste0('![',desc,'](',png_f,')\n') 
+  }else if( file.exists(pdf_f) ){
+    convert_cmd=paste("convert -density 150 ",pdf_f, png_f)
+    convert_status=system(convert_cmd)
+    if(convert_status==0){ #success
+      return_image_str= paste0('![',desc,'](',png_f,')\n') 
+    }else{
+      return_image_str= paste0('![',desc,'](',pdf_f,')\n') 
+    }
+  }
+  return (return_image_str)
+}
+report_section_i=0;
+```
+
+---
+title: "RNAseq Report"
+author: ""
+date: `r Date_now`
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+report_section_i=report_section_i+1
+```
+
+## Project name: `r study_name`
+### Section `r report_section_i`: Reads mapping to genome (`r geno`) statistics:  
+All reads were mapped to reference genome using STAR. For pair-end reads, this section report each read separately. 
+
+```{r read2genome_stats, echo = FALSE, results='markup'}
+
+input_r_d=read.table(input_readnum_f, header=T, sep="\t", quote="", check.names=F)
+SEreadmap_stats_d=read.table(SEreadmap_stats_f, header=T, sep="\t", quote="", check.names=F)
+if(!("all_sample_name" %in% ls())){
+  all_sample_name=input_r_d[,1]
+}else{
+  input_r_d=input_r_d[match(all_sample_name,input_r_d[,1]),]
+}
+SEreadmap_stats_d=SEreadmap_stats_d[match(all_sample_name, SEreadmap_stats_d[,1]),]
+if(if_PE){
+  input_r_d[,"Raw read x2"]=input_r_d[,"Raw read"]*2
+  total_reads=input_r_d[,"Raw read x2"]
+}else{
+  total_reads=input_r_d[,"Raw read"]
+}
+input_r_d[,"1.not-mapped"]=total_reads-rowSums(SEreadmap_stats_d[,-1])
+add_headers=names(SEreadmap_stats_d)[-1]
+input_r_d[,add_headers]=SEreadmap_stats_d[,-1]
+usable_reads_num=rowSums(input_r_d[grep("4.unique",names(input_r_d),value=T)])
+usable_reads_perc=round(usable_reads_num/total_reads,4)
+input_r_d[,"usable.reads%"]=paste0(usable_reads_perc*100,"%")
+input_r_d=re_format_tb(input_r_d,ch_header_from =c(".unique.clip>none"),ch_header_to =c("")  )
+input_r_d=re_format_tb(input_r_d, ch_header_from = '\\.', ch_header_to = "-" )
+kable(input_r_d, caption = "",align="c",row.names=F, format.args = list( big.mark = ",") )
+report_section_i=report_section_i+1
+```
+
+**Header description:**  
+**Raw read**: raw read number used for mapping, for PE read, this value is the sequenced fragment number;  
+**Raw read x2**: for pair-end read only. Each PE read were counted as two reads (read 1 and read2);    
+**1-not-mapped**: reads not mapped;  
+**2-non-unique**: reads non-uniquely mapped;  
+**3-mismatch>5/100bp**: reads with mismatch to reference genome >5 nt per 100 bp read length;  
+**4-unique-ExonBody**: reads uniquely mapped to genome without a gap (intron);  
+**4-unique-Junction**: reads uniquely mapped to genome with a gap (intron). These are reads cover >1 exon-exon junctions  
+**usable-reads%**: percent of usable reads (unique-ExonBody + unique-Junction) among all raw read used for mapping.  
+
+```{r PEmap2genome_stats.title,  results='asis'}
+if(if_PE){
+  pandoc.header(paste("Section ",report_section_i,": Pair-end (PE) reads mapping to genome (",geno,") statistics:", sep=""), level = 3)
+  pander("Pair-end (PE) reads are DNA or RNA fragments sequenced at both 5\' and 3\' ends. In this section, number of PE reads mapping to reference genome were analyzed. ")
+}
+```
+
+```{r PEmap2genome_stats.content, echo=FALSE,   results='asis'}
+if(if_PE){
+  PEreadmap_stats_d=read.table(PEreadmap_stats_f, header=T, sep="\t", quote="", check.names=F)
+  PEreadmap_stats_d=PEreadmap_stats_d[match(all_sample_name, PEreadmap_stats_d[,1]),]
+  PEreadmap_stats_d=PEreadmap_stats_d[,setdiff(names(PEreadmap_stats_d),"7.reads.primaryAli.mismatch<=none.clip<=none")] 
+  PEreadmap_stats_d=re_format_tb(PEreadmap_stats_d, ch_header_from = '\\.', ch_header_to = "-" )
+  PEreadmap_stats_d[,"%usable-reads"]=paste0(round(PEreadmap_stats_d[,"6-reads-primaryAli-BestAliSco"] / (total_reads/2),4)*100,"%")
+  print(kable(PEreadmap_stats_d, caption = "",align="c",row.names=F, format.args = list( big.mark = ",") ))
+
+}
+```
+
+```{r PEmap2genome_stats.content2, echo=FALSE,   results='asis'}
+if(if_PE){
+  pander("**0-reads-row_inSam**: number of rows (mapping) in sam/bam file;  
+**1-reads-primaryAli**: primary alignment;  
+**2-reads-primaryAli-unique**: primary alignment and uniquely mapped;  
+**3-reads-primaryAli-properMapped**: primary alignment and properly mapped;  
+**4-reads-primaryAli-mate1**: primary alignment and mate 1 (read 1);  
+**5-reads-primaryAli-isize<50000**: primary alignment and insert-size <50kb. Insert size here represents the distance of the mapped position between read 1 and read 2;  
+**6-reads-primaryAli-BestAliSco**: primary alignment and best alignment score for each read;  
+**%usable-reads**: percent of usable read for the next step: 6-reads-primaryAli-BestAliSco / all raw PE reads;  
+")
+  
+}
+```
+
+```{r PE2gene.title, results='asis'}
+if(if_PE){
+  report_section_i=report_section_i+1
+  pandoc.header(paste("Section ",report_section_i,": Pair-end (PE) reads mapping to genes statistics:", sep=""), level = 3)
+}
+```
+
+```{r PE2gene.content, results='asis'}
+if(if_PE){
+  
+  PE_2gene_stats_d=read.table(PE_2gene_stats_f, header=T, sep="\t", quote="", check.names=F)
+  PE_2gene_stats_d=PE_2gene_stats_d[match(all_sample_name,PE_2gene_stats_d[,1]),]
+  PE_2gene_stats_d=re_format_tb(PE_2gene_stats_d, ch_header_from = c('_'), ch_header_to = c("-") )
+  total_used_PE_reads=rowSums(PE_2gene_stats_d[,-1],na.rm=T)
+  if(if_stranded){
+    PE_2gene_stats_d[,"%CDS-S"]= paste0(round(PE_2gene_stats_d[,"CDS-S"]/total_used_PE_reads*100,2),"%")
+  }else{
+    PE_2gene_stats_d[,"%CDS"]= paste0(round(PE_2gene_stats_d[,"CDS"]/total_used_PE_reads*100,1),"%")
+  }
+  
+  kable(PE_2gene_stats_d, caption = "",align="c",row.names=F, format.args = list( big.mark = ",") )
+}
+```
+
+```{r PE2gene.content2, results='asis'}
+if(if_PE){
+  pander("**Note**: Genes were separated to different regions. For protein coding genes, **CDS** (coding sequence), **5UTR** (5\'UTR), **3UTR** (3\'UTR), **UTR3e** (3\'UTR downstream 4kb extension), **UTR5e** (5\'UTR upstream 4kb extension), **intron**. For non-coding genes, **exon** and **intron**. For stranded sequecing (read contains gene strand information), reads were assigned to the sense (**-S**) or antisense (**-A**) strand of genes. All other reads are \"**intergenic**\". For gene expression analysis, reads assigned to CDS or CDS-S were used for quantification.")
+}
+
+```
+
+
+
+```{r SE2gene.title, results='asis'}
+if(!if_PE){
+  report_section_i=report_section_i+1
+  pandoc.header(paste("Section ",report_section_i,": single-end (SE) reads mapping to genes statistics:", sep=""), level = 3)
+}
+```
+
+
+```{r SE2gene.content, results='asis'}
+if(!if_PE){
+  
+  SE_2gene_stats_d=read.table(SE_2gene_stats_f, header=T, sep="\t", quote="", check.names=F)
+  SE_2gene_stats_d=SE_2gene_stats_d[match(all_sample_name,SE_2gene_stats_d[,1]),]
+  SE_2gene_stats_d=re_format_tb(SE_2gene_stats_d, ch_header_from = c('_'), ch_header_to = c("-") )
+  total_used_SE_reads=rowSums(SE_2gene_stats_d[,-1],na.rm=T)
+  #combine junc and nonJunc reads
+  readtypes=unique(sub("nonJunc\\.|Junc\\.","",sort(names(SE_2gene_stats_d)[-1])))
+  junc_read_types=paste0("Junc.",readtypes)
+  nonjunc_read_types=paste0("nonJunc.",readtypes)
+  SE_2gene_stats_d2=data.frame(Sample=SE_2gene_stats_d[,1])
+  missing_headers=setdiff(c(junc_read_types,nonjunc_read_types),names(SE_2gene_stats_d))
+  SE_2gene_stats_d[,missing_headers]=0
+  SE_2gene_stats_d[,readtypes]=SE_2gene_stats_d[,junc_read_types]+SE_2gene_stats_d[,nonjunc_read_types]
+  readtypes_sorted=readtypes[order(colSums(SE_2gene_stats_d[,readtypes]),decreasing=T)]
+  SE_2gene_stats_d2[,readtypes_sorted]=SE_2gene_stats_d[,readtypes_sorted]
+  SE_2gene_stats_d2=re_format_tb(SE_2gene_stats_d2, front_headers = c("Sample", "CDS-S","3UTR-S","5UTR-S","exon-S","intron-S"), back_headers = "intergenic") 
+  if(if_stranded){
+    SE_2gene_stats_d2[,"%CDS-S"]= paste0(round(SE_2gene_stats_d[,"CDS-S"]/total_used_SE_reads*100,2),"%")
+  }else{
+    SE_2gene_stats_d2[,"%CDS"]= paste0(round(SE_2gene_stats_d[,"CDS"]/total_used_SE_reads*100,1),"%")
+  }
+  
+  kable(SE_2gene_stats_d2, caption = "",align="c",row.names=F, format.args = list( big.mark = ",") )
+}
+```
+
+```{r SE2gene.content2, results='asis'}
+if(!if_PE){
+  pander("**Note**: Genes were separated to different regions. For protein coding genes, **CDS** (coding sequence), **5UTR** (5\'UTR), **3UTR** (3\'UTR), **UTR3e** (3\'UTR downstream 4kb extension), **UTR5e** (5\'UTR upstream 4kb extension), **intron**. For non-coding genes, **exon** and **intron**. For stranded sequecing (read contains gene strand information), reads were assigned to the sense (**-S**) or antisense (**-A**) strand of genes. All other reads are \"**intergenic**\". For gene expression analysis, reads assigned to CDS or CDS-S were used for quantification.")
+}
+
+```
+
+
+```{r GexReport.dendroplot, include=FALSE}
+report_section_i=report_section_i+1
+#![Dendroplot of RPKM](GexStats/GeneExp.dendroplot.AllSamples.png)
+png_Dendroplot_img_string=convert_pdf2png(paste0('GexStats/GeneExp.dendroplot.AllSamples.png'), desc='Dendroplot of RPKM')
+
+```
+
+### Section `r report_section_i`: Clustering analysis of gene expression (dendroplot):  
+Gene expression level was quantified using Read/fragment Per Kb per Million uniquely mapped reads (RPKM) value. Only genes with average RPKM >2 were used for plotting. 1 - Spearman correlation coefficient was used as distance matrix.
+`r png_Dendroplot_img_string`
+
+```{r GexReport.Gex.heatmap, include=FALSE}
+report_section_i=report_section_i+1
+#![GeneExp.heatmap.allExpressedGenes.png](GexStats/GeneExp.heatmap.allExpressedGenes.png)
+png_heatmap_all_img_string=convert_pdf2png(paste0('GexStats/GeneExp.heatmap.allExpressedGenes.png'), desc='GeneExp.heatmap.allExpressedGenes.png')
+#![GeneExp.heatmap.regulatedGenes.png](GexStats/GeneExp.heatmap.regulatedGenes.png)
+png_heatmap_regu_img_string=convert_pdf2png(paste0('GexStats/GeneExp.heatmap.regulatedGenes.png'), desc='GeneExp.heatmap.regulatedGenes.png')
+#![GeneExp.heatmap.topRegulated.png](GexStats/GeneExp.heatmap.topRegulated.png)
+png_heatmap_topregu_img_string=convert_pdf2png(paste0('GexStats/GeneExp.heatmap.topRegulated.png'), desc='GeneExp.heatmap.topRegulated.png')
+
+
+```
+
+### Section `r report_section_i`: Heat-map of gene expression (RPKM):
+Mean-centered log2(RPKM+0.01) was used for plotting. Each row is a gene. Each column is a sample. Gene number used for plotting was shown on the right of the plot.
+
+**All expressed genes (average RPKM>2):**
+`r png_heatmap_all_img_string`
+
+**Regulated genes (expressed and Fold change>`r foldchange_cut`, P(adjusted)<`r p_cut` using `r pval_fun` method):**
+`r png_heatmap_regu_img_string`
+
+**Top regulated genes (Select genes based on top 50 most significant P-value and/or top 50 most regulated fold change):**
+`r png_heatmap_topregu_img_string`
+
+```{r GexReport.Gex.scatterPlot, include=FALSE}
+report_section_i=report_section_i+1
+#![GeneExp.Scatter-plot.AllSamples.png](GexStats/GeneExp.Scatter-plot.AllSamples.png)
+png_Scatter_img_string=convert_pdf2png(paste0('GexStats/GeneExp.Scatter-plot.AllSamples.png'), desc='GeneExp.Scatter-plot.AllSamples.png')
+
+```
+
+### Section `r report_section_i`: Scatter plot of gene expression (RPKM) between samples:
+Scatter plot (bottom left half) and Spearman correlation coefficient (top right half) of gene expression (log10(RPKM+0.01)):
+`r png_Scatter_img_string`
+
+```{r GexReport.GexChange.Barplot.title, include=FALSE}
+report_section_i=report_section_i+1
+#![GeneExpChange.Number.Barplot.png](GexStats/GeneExpChange.Number.Barplot.png)
+png_GexChNum_img_string=convert_pdf2png(paste0('GexStats/GeneExpChange.Number.Barplot.png'), desc='GeneExpChange.Number.Barplot.png')
+
+```
+
+
+### Section `r report_section_i`: Number of genes regulated between samples:
+criteria of expression regulation: Fold change>`r foldchange_cut`, P(adjusted)<`r p_cut` using `r pval_fun` method.
+`r png_GexChNum_img_string`
+
+
+
+```{r GexReport.GexChange.volcano.title, include=FALSE}
+report_section_i=report_section_i+1
+```
+
+### Section `r report_section_i`: Volcano plot of gene expression change between samples:
+x axis: log2 ratio of gene expression change
+
+y axis: -log10 P-value
+
+<span style="color:red">Up-</span> and <span style="color:blue">down-</span>regulated genes (Fold change>`r foldchange_cut`, P(adjusted)<`r p_cut` using `r pval_fun` method) are highlighted in <span style="color:red">red</span> and <span style="color:blue">blue</span>  respectively. Top-regulated genes are labeled on the right plot.
+
+```{r GexReport.GexChange.volcano.content, echo=FALSE,message=FALSE, results="asis", out.width='100%'}
+
+for(i in 1:length(test_samples)){
+  sample_pair=paste0(test_samples[i],'.vs.',ref_samples[i])
+  cat(paste0("**\nsample pair= ",sample_pair,":**\n"))
+  #cat( paste0('![](GexStats/GeneExpChange.volcano.',sample_pair,'.png)\n') )
+  png_img=paste0('GexStats/GeneExpChange.volcano.',sample_pair,'.png')
+  cat(convert_pdf2png(png_img))
+}
+
+```
+
+
+
+```{r GexReport.GexChange.MA_plot.title, include=FALSE}
+report_section_i=report_section_i+1
+```
+
+### Section `r report_section_i`: MA-plot of gene expression change between samples:
+x axis: average gene expression (log10 RPKM) of two comparing samples
+
+y axis: log2 ratio of gene expression change
+
+<span style="color:red">Up-</span> and <span style="color:blue">down-</span>regulated genes (Fold change>`r foldchange_cut`, P(adjusted)<`r p_cut` using `r pval_fun` method) are highlighted in <span style="color:red">red</span> and <span style="color:blue">blue</span>  respectively. Top-regulated genes are labeled on the right plot.
+
+```{r GexReport.GexChange.MA_plot.content, echo=FALSE,message=FALSE, results="asis", out.width='100%'}
+
+for(i in 1:length(test_samples)){
+  sample_pair=paste0(test_samples[i],'.vs.',ref_samples[i])
+  cat(paste0("**\nsample pair= ",sample_pair,":**\n"))
+  #cat( paste0('![](GexStats/GeneExpChange.MA-plot.',sample_pair,'.png)\n') )
+  png_img=paste0('GexStats/GeneExpChange.MA-plot.',sample_pair,'.png')
+  cat(convert_pdf2png(png_img))
+}
+
+```
+
+```{r GexReport.GexChange.scatter.title, include=FALSE}
+report_section_i=report_section_i+1
+```
+
+### Section `r report_section_i`: Scatter-plot of gene expression change between samples:
+x axis: average gene expression (log10 RPKM) of control samples
+
+y axis: average gene expression (log10 RPKM) of test samples
+
+<span style="color:red">Up-</span> and <span style="color:blue">down-</span>regulated genes (Fold change>`r foldchange_cut`, P(adjusted)<`r p_cut` using `r pval_fun` method) are highlighted in <span style="color:red">red</span> and <span style="color:blue">blue</span>  respectively. Top-regulated genes are labeled on the right plot.
+
+```{r GexReport.GexChange.scatter.content, echo=FALSE,message=FALSE, results="asis", out.width='100%'}
+
+for(i in 1:length(test_samples)){
+  sample_pair=paste0(test_samples[i],'.vs.',ref_samples[i])
+  cat(paste0("**\nsample pair= ",sample_pair,":**\n"))
+  #cat( paste0('![](GexStats/GeneExpChange.Scatter-plot.',sample_pair,'.png)\n') )
+  png_img=paste0('GexStats/GeneExpChange.Scatter-plot.',sample_pair,'.png')
+  cat(convert_pdf2png(png_img))
+  
+}
+
+```
+
+
+```{r GexReport.GexChange.heatmap, include=FALSE}
+report_section_i=report_section_i+1
+png_img_string=convert_pdf2png(paste0('GexStats/GeneExpChange.heatmap.png'), desc='GeneExpChange.heatmap')
+# ![GeneExpChange.heatmap.png](GexStats/GeneExpChange.heatmap.png)
+
+```
+
+
+### Section `r report_section_i`: Heat-map of gene expression change between samples:
+Log2 ratio of gene expression change are shown as heat map.
+
+`r png_img_string`
+
+
+
+```{r GexReport.GexChange.xlsx.file, include=FALSE}
+report_section_i=report_section_i+1
+```
+
+
+### Section `r report_section_i`: Excel table of gene expression data:
+Gene read counts (num_), expression quantification (RPKM), expression change (L2FC_, log2 fold change) and P-value (adjSLog10P_, -log10 based with a sign indicating up or downregulation) can be found in this Excel table: [GexStats/allGene.xlsx](GexStats/allGene.xlsx)
+
+
+
+

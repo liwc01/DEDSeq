@@ -1,0 +1,18 @@
+#open ../ucsc/refFlat/rn6/refFlat.txt
+#headers=gene_symbol name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends;
+#open ../ucsc/ensGene/rn6/ensGene.txt
+#headers=bin name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends score name2 cdsStartStat cdsEndStat exonFrames;
+#write 04.ss_supp/rn6_2102/supp.junc.tbl
+#write 04.ss_supp/rn6_2102/supp.ss5.tbl
+#write 04.ss_supp/rn6_2102/supp.ss3.tbl
+counts:
+input.gene	ensGene	1.row	41078
+input.gene	ensGene	2.spliced	31011
+input.gene	refFlat	1.row	19160
+input.gene	refFlat	2.spliced	16582
+input.intron	ensGene	270282
+input.intron	refFlat	160013
+output	junc	210669
+output	ss3	204850
+output	ss5	205432
+

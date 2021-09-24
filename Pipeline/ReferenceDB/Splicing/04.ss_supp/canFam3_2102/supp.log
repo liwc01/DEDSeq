@@ -1,0 +1,18 @@
+#open ../ucsc/refFlat/canFam3/refFlat.txt
+#headers=gene_symbol name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends;
+#open ../ucsc/ensGene/canFam3/ensGene.txt
+#headers=bin name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends score name2 cdsStartStat cdsEndStat exonFrames;
+#write 04.ss_supp/canFam3_2102/supp.junc.tbl
+#write 04.ss_supp/canFam3_2102/supp.ss5.tbl
+#write 04.ss_supp/canFam3_2102/supp.ss3.tbl
+counts:
+input.gene	ensGene	1.row	60994
+input.gene	ensGene	2.spliced	54729
+input.gene	refFlat	1.row	2325
+input.gene	refFlat	2.spliced	1596
+input.intron	ensGene	539872
+input.intron	refFlat	13947
+output	junc	225732
+output	ss3	204550
+output	ss5	205113
+

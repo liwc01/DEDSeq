@@ -1,0 +1,33 @@
+#open ../../../data/ucsc/refFlat/hg19/refFlat.txt
+#headers=gene_symbol name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends;
+#open ../../../data/ucsc/knownGene/hg19_1511/knownGene.txt
+#headers=name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends proteinID alignID;
+#open ../../../data/ucsc/ensGene/hg19_1511/ensGene.txt
+#headers=bin name contig strand transc_start transc_end cds_start cds_end exon_num exon_starts exon_ends score name2 cdsStartStat cdsEndStat exonFrames;
+#open ../../../data/ucsc/mRNA/hg19_1511/all_mrna.txt
+#headers=bin matches misMatches repMatches nCount qNumInsert qBaseInsert tNumInsert tBaseInsert strand name qSize qStart qEnd contig tSize tStart tEnd exon_num blockSizes qStarts exon_starts;
+#open ../../../data/ucsc/est/hg19_1511/all_est.txt
+#headers=bin matches misMatches repMatches nCount qNumInsert qBaseInsert tNumInsert tBaseInsert strand name qSize qStart qEnd contig tSize tStart tEnd exon_num blockSizes qStarts exon_starts;
+#write 01ss_supp/hg19_1511/supp.junc.tbl
+#write 01ss_supp/hg19_1511/supp.ss5.tbl
+#write 01ss_supp/hg19_1511/supp.ss3.tbl
+counts:
+input.gene	ensGene	1.row	204940
+input.gene	ensGene	2.spliced	179193
+input.gene	est	1.row	8686020
+input.gene	est	2.spliced	6886499
+input.gene	knownGene	1.row	82960
+input.gene	knownGene	2.spliced	72408
+input.gene	mrna	1.row	8498134
+input.gene	mrna	2.spliced	597348
+input.gene	refFlat	1.row	54439
+input.gene	refFlat	2.spliced	49473
+input.intron	ensGene	1040282
+input.intron	est	13874191
+input.intron	knownGene	659533
+input.intron	mrna	1865717
+input.intron	refFlat	454030
+output	junc	701566
+output	ss3	476994
+output	ss5	470123
+
