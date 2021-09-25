@@ -1,5 +1,5 @@
 # DEDSeq
-A pipeline to study differential gene expression and differential splicing using RNAseq data
+A pipeline to study **d**ifferential gene **e**xpression and **d**ifferential **s**plicing using RNA**seq** data
 
 # Introduction: 
 DEDSeq is a pipeline to study differential gene expression and differential splicing using RNAseq data. 
