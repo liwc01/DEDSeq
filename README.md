@@ -42,4 +42,6 @@ bedtools
 
 5, not all analysis is required. eg, if you already have mapped files in bam format, you can skip the mapping step.
 
+# How to cite: 
+Bhattacharyya A, Trotta CR, Narasimhan J, Wiedinger KJ, Li W, Effenberger KA, et al. Small molecule splicing modifiers with systemic HTT-lowering activity. Nat Commun. 2021;12(1):7299.
 
